@@ -11,7 +11,10 @@ from sqlalchemy.orm import DeclarativeBase
 
 load_dotenv()
 
-DATABASE_URL: str = os.environ["DATABASE_URL"]
+DATABASE_URL: str = os.environ.get(
+    "DATABASE_URL",
+    "postgresql+asyncpg://glitr:glitr@localhost:5432/glitrdb"
+)
 
 engine = create_async_engine(
     DATABASE_URL,
