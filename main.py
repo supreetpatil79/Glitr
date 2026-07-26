@@ -175,7 +175,11 @@ async def generate(payload: GenerateRequest, background_tasks: BackgroundTasks):
         await session.flush()  # get the generated id before commit
         job_id = job.id
 
-    background_tasks.add_task(run_generation_job, job_id)
+    if os.environ.get("VERCEL"):
+        await run_generation_job(job_id)
+    else:
+        background_tasks.add_task(run_generation_job, job_id)
+
     logger.info("Enqueued job %s for '%s'", job_id, payload.product_name)
     return {"id": str(job_id)}
 
