@@ -51,6 +51,15 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="GlitrAI Mini Content Engine", lifespan=lifespan)
 
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    logger.exception("Global exception: %s", exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"{type(exc).__name__}: {str(exc)}"}
+    )
+
+
 # ---------------------------------------------------------------------------
 # Pydantic schemas
 # ---------------------------------------------------------------------------
