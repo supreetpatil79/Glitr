@@ -16,6 +16,9 @@ DATABASE_URL: str = os.environ.get(
     "postgresql+asyncpg://glitr:glitr@localhost:5432/glitrdb"
 )
 
+if "sslmode=" in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("sslmode=", "ssl=")
+
 engine = create_async_engine(
     DATABASE_URL,
     echo=False,
