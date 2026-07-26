@@ -150,6 +150,11 @@ async def health():
 @app.post("/generate", status_code=202)
 async def generate(payload: GenerateRequest, background_tasks: BackgroundTasks):
     """Create a generation job and kick it off in the background."""
+    try:
+        await init_db()
+    except Exception as exc:
+        logger.warning("init_db in /generate: %s", exc)
+
     async with get_session() as session:
         job = Job(
             product_name=payload.product_name,
@@ -169,6 +174,11 @@ async def generate(payload: GenerateRequest, background_tasks: BackgroundTasks):
 @app.get("/jobs/{job_id}")
 async def get_job(job_id: uuid.UUID):
     """Return the full job row as JSON."""
+    try:
+        await init_db()
+    except Exception:
+        pass
+
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(Job).where(Job.id == job_id))
         job = result.scalar_one_or_none()
@@ -181,6 +191,11 @@ async def get_job(job_id: uuid.UUID):
 @app.get("/jobs")
 async def list_jobs():
     """Return all jobs, newest first."""
+    try:
+        await init_db()
+    except Exception:
+        pass
+
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             select(Job).order_by(Job.created_at.desc())
