@@ -21,8 +21,12 @@ from services.llm import generate_image_prompt
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+RESULTS_DIR = STATIC_DIR / "results"
+
 try:
-    Path("static/results").mkdir(parents=True, exist_ok=True)
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 except OSError:
     pass
 
@@ -35,8 +39,11 @@ except OSError:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up — initialising database…")
-    await init_db()
-    logger.info("Database ready.")
+    try:
+        await init_db()
+        logger.info("Database ready.")
+    except Exception as exc:
+        logger.warning("Database startup init warning: %s", exc)
     yield
     logger.info("Shutting down.")
 
@@ -185,12 +192,15 @@ async def list_jobs():
 # ---------------------------------------------------------------------------
 # Static files (must be mounted AFTER route definitions)
 # ---------------------------------------------------------------------------
-app.mount("/static", StaticFiles(directory="static"), name="static")
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-# Serve index.html at root
 from fastapi.responses import FileResponse  # noqa: E402
 
 
 @app.get("/")
 async def root():
-    return FileResponse("static/index.html")
+    index_file = STATIC_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file))
+    return {"message": "GlitrAI API Live", "health": "/health"}

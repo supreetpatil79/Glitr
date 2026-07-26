@@ -21,7 +21,8 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-RESULTS_DIR    = Path("static/results")
+BASE_DIR       = Path(__file__).resolve().parent.parent
+RESULTS_DIR    = BASE_DIR / "static" / "results"
 IMAGE_BACKEND  = os.environ.get("IMAGE_BACKEND", "pollinations").lower().strip()
 
 
