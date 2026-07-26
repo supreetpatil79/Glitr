@@ -1,0 +1,93 @@
+{
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "_comment": "Loads MODEL + CLIP only. VAE comes from VAELoader node 11.",
+    "inputs": {
+      "ckpt_name": "Realistic_Vision_V5.1_fp16-no-ema.safetensors"
+    }
+  },
+  "11": {
+    "class_type": "VAELoader",
+    "_comment": "Dedicated VAE — required because Realistic_Vision_V5.1_noVAE has no usable baked-in VAE.",
+    "inputs": {
+      "vae_name": "vae-ft-mse-840000-ema-pruned.safetensors"
+    }
+  },
+  "2": {
+    "class_type": "LoadImage",
+    "_comment": "Reference product image. __IMAGE__ is substituted by comfyui_client.py at runtime.",
+    "inputs": {
+      "image": "__IMAGE__",
+      "upload": "image"
+    }
+  },
+  "3": {
+    "class_type": "VAEEncode",
+    "_comment": "Encodes reference image to latent space using dedicated VAE (node 11, not node 1).",
+    "inputs": {
+      "pixels": ["2", 0],
+      "vae":    ["11", 0]
+    }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "_comment": "Positive prompt. __PROMPT__ is substituted by comfyui_client.py at runtime.",
+    "inputs": {
+      "text": "__PROMPT__",
+      "clip": ["1", 1]
+    }
+  },
+  "5": {
+    "class_type": "CLIPTextEncode",
+    "_comment": "Negative prompt — hardcoded quality guard.",
+    "inputs": {
+      "text": "blurry, distorted, low quality, watermark, text, deformed, ugly, disfigured, overexposed, underexposed, duplicate, morbid, mutilated, out of frame, extra fingers, mutated hands, poorly drawn hands, poorly drawn face, mutation, bad anatomy, cloned face, weird colors, plastic, fake, artificial",
+      "clip": ["1", 1]
+    }
+  },
+  "6": {
+    "class_type": "KSampler",
+    "_comment": "img2img: denoise=0.6 preserves reference structure. seed randomised by comfyui_client.py.",
+    "inputs": {
+      "model":        ["1", 0],
+      "positive":     ["4", 0],
+      "negative":     ["5", 0],
+      "latent_image": ["3", 0],
+      "seed":         42,
+      "steps":        20,
+      "cfg":          7.0,
+      "sampler_name": "euler_ancestral",
+      "scheduler":    "normal",
+      "denoise":      0.6
+    }
+  },
+  "7": {
+    "class_type": "VAEDecode",
+    "_comment": "Decodes latent → image using dedicated VAE (node 11, not node 1).",
+    "inputs": {
+      "samples": ["6", 0],
+      "vae":     ["11", 0]
+    }
+  },
+  "8": {
+    "class_type": "UpscaleModelLoader",
+    "inputs": {
+      "model_name": "4x-UltraSharp.pth"
+    }
+  },
+  "9": {
+    "class_type": "ImageUpscaleWithModel",
+    "inputs": {
+      "upscale_model": ["8", 0],
+      "image":         ["7", 0]
+    }
+  },
+  "10": {
+    "class_type": "SaveImage",
+    "_comment": "comfyui_client.py finds output by searching all nodes for an 'images' key — not by hardcoding this ID.",
+    "inputs": {
+      "filename_prefix": "glitr_output",
+      "images":          ["9", 0]
+    }
+  }
+}

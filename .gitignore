@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+dist/
+build/
+static/results/*.jpg
+static/results/*.png
+static/results/*.webp
+.DS_Store

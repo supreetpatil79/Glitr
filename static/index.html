@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GlitrAI — Mini Content Engine</title>
+  <meta name="description" content="AI-powered product photography generator. Submit your product details and get a professional lifestyle image in seconds." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-base:        #0a0a0f;
+      --bg-surface:     #12121a;
+      --bg-card:        #1a1a28;
+      --bg-card-hover:  #1f1f32;
+      --border:         rgba(255,255,255,0.07);
+      --border-glow:    rgba(139,92,246,0.5);
+
+      --accent-1:       #8b5cf6;   /* violet */
+      --accent-2:       #ec4899;   /* pink */
+      --accent-3:       #06b6d4;   /* cyan */
+
+      --text-primary:   #f1f0ff;
+      --text-secondary: #a09eb8;
+      --text-muted:     #5c5a72;
+
+      --status-pending:    #f59e0b;
+      --status-processing: #3b82f6;
+      --status-completed:  #10b981;
+      --status-failed:     #ef4444;
+
+      --radius-sm:  6px;
+      --radius-md:  12px;
+      --radius-lg:  20px;
+      --radius-xl:  28px;
+
+      --shadow-card: 0 4px 32px rgba(0,0,0,0.5);
+      --shadow-glow: 0 0 40px rgba(139,92,246,0.25);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated background gradient ──────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(139,92,246,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 80%, rgba(236,72,153,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 40% at 50% 40%, rgba(6,182,212,0.05) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Layout ─────────────────────────────────────────── */
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    header {
+      text-align: center;
+      padding: 64px 0 48px;
+    }
+
+    .logo-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(236,72,153,0.15));
+      border: 1px solid rgba(139,92,246,0.3);
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-1);
+      margin-bottom: 24px;
+    }
+
+    .logo-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent-1);
+      box-shadow: 0 0 8px var(--accent-1);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    h1 {
+      font-size: clamp(2.4rem, 6vw, 4rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      background: linear-gradient(135deg, #f1f0ff 20%, #c4b5fd 50%, #f9a8d4 80%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+    }
+
+    .tagline {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      max-width: 480px;
+      margin: 0 auto;
+      font-weight: 400;
+    }
+
+    /* ── Card shell ─────────────────────────────────────── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+    }
+
+    /* ── Form ───────────────────────────────────────────── */
+    .form-section {
+      padding: 36px 40px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    input[type="text"],
+    textarea {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 14px;
+      padding: 12px 16px;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+      outline: none;
+      resize: vertical;
+    }
+
+    input[type="text"]::placeholder,
+    textarea::placeholder {
+      color: var(--text-muted);
+    }
+
+    input[type="text"]:focus,
+    textarea:focus {
+      border-color: var(--accent-1);
+      background: rgba(139,92,246,0.06);
+      box-shadow: 0 0 0 3px rgba(139,92,246,0.12);
+    }
+
+    textarea { min-height: 90px; }
+
+    .btn-generate {
+      margin-top: 20px;
+      width: 100%;
+      padding: 15px 28px;
+      border: none;
+      border-radius: var(--radius-lg);
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent-1) 0%, var(--accent-2) 100%);
+      color: #fff;
+      letter-spacing: 0.02em;
+      position: relative;
+      overflow: hidden;
+      transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(139,92,246,0.4);
+    }
+
+    .btn-generate::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .btn-generate:hover:not(:disabled)::before { opacity: 1; }
+    .btn-generate:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 30px rgba(139,92,246,0.5);
+    }
+    .btn-generate:active:not(:disabled) { transform: translateY(0); }
+    .btn-generate:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ── Toast ──────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 20px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 500;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-card);
+      transform: translateY(80px);
+      opacity: 0;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      max-width: 380px;
+      pointer-events: none;
+    }
+
+    #toast.show {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #toast.success { border-color: var(--status-completed); }
+    #toast.error   { border-color: var(--status-failed); }
+
+    /* ── Jobs list ──────────────────────────────────────── */
+    .jobs-section {
+      padding: 32px 40px;
+    }
+
+    .jobs-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .jobs-count {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .poll-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .poll-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--status-processing);
+      display: none;
+    }
+
+    .poll-dot.active {
+      display: block;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
+    #jobs-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      opacity: 0.4;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+    }
+
+    /* ── Job row ────────────────────────────────────────── */
+    .job-row {
+      background: rgba(255,255,255,0.025);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px 22px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .job-row:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(139,92,246,0.3);
+      transform: translateY(-1px);
+    }
+
+    .job-row.expanded {
+      border-color: rgba(139,92,246,0.4);
+      box-shadow: 0 0 0 1px rgba(139,92,246,0.15);
+    }
+
+    .status-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .status-icon.pending    { background: rgba(245,158,11,0.15); }
+    .status-icon.processing { background: rgba(59,130,246,0.15); }
+    .status-icon.completed  { background: rgba(16,185,129,0.15); }
+    .status-icon.failed     { background: rgba(239,68,68,0.15);  }
+
+    .job-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .job-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+
+    .job-sub {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .job-id {
+      font-size: 11px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      color: var(--text-muted);
+    }
+
+    .job-time {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* ── Status badge ───────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    .badge.pending    { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+    .badge.processing { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+    .badge.completed  { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+    .badge.failed     { background: rgba(239,68,68,0.15);  color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+
+    .badge-spinner {
+      width: 8px; height: 8px;
+      border: 1.5px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Expanded result ────────────────────────────────── */
+    .job-result {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      display: none;
+    }
+
+    .job-row.expanded .job-result {
+      display: block;
+    }
+
+    .job-prompt {
+      font-size: 13px;
+      color: var(--text-secondary);
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      line-height: 1.7;
+      font-style: italic;
+    }
+
+    .job-prompt strong {
+      display: block;
+      font-style: normal;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .result-image-wrap {
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.4);
+      position: relative;
+    }
+
+    .result-image-wrap img {
+      width: 100%;
+      height: auto;
+      display: block;
+      transition: opacity 0.4s ease;
+    }
+
+    .image-loading-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10,10,15,0.8);
+      gap: 10px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .big-spinner {
+      width: 24px; height: 24px;
+      border: 2px solid rgba(255,255,255,0.1);
+      border-top-color: var(--accent-1);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .error-box {
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.25);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #fca5a5;
+    }
+
+    .error-box strong {
+      display: block;
+      color: #f87171;
+      margin-bottom: 4px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Responsive ─────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .form-section, .jobs-section { padding: 24px 20px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full-width { grid-column: auto; }
+      h1 { font-size: 2rem; }
+    }
+
+    /* ── Skeleton loader ─────────────────────────────────── */
+    @keyframes shimmer {
+      0%   { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+
+    .skeleton {
+      background: linear-gradient(90deg,
+        rgba(255,255,255,0.04) 25%,
+        rgba(255,255,255,0.08) 50%,
+        rgba(255,255,255,0.04) 75%);
+      background-size: 800px 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: var(--radius-md);
+    }
+
+    /* ── Separator ───────────────────────────────────────── */
+    .spacer { height: 32px; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+
+    <!-- Header -->
+    <header>
+      <div class="logo-pill">
+        <span class="logo-dot"></span>
+        GlitrAI
+      </div>
+      <h1>Mini Content Engine</h1>
+      <p class="tagline">Turn any product into a stunning lifestyle photo — powered by Groq + Pollinations AI.</p>
+    </header>
+
+    <!-- Main card: form + jobs -->
+    <div class="card">
+
+      <!-- Generation Form -->
+      <div class="form-section">
+        <div class="section-label">New Generation</div>
+        <form id="gen-form" autocomplete="off">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="product-name">Product Name <span style="color:var(--accent-2)">*</span></label>
+              <input
+                id="product-name"
+                type="text"
+                placeholder="e.g. Matcha Latte Powder"
+                required
+                maxlength="200"
+              />
+            </div>
+            <div class="form-group">
+              <label for="ref-url">Reference Image URL <span style="color:var(--text-muted)">(optional)</span></label>
+              <input
+                id="ref-url"
+                type="text"
+                placeholder="https://example.com/product.jpg"
+              />
+            </div>
+            <div class="form-group full-width">
+              <label for="description">Product Description <span style="color:var(--accent-2)">*</span></label>
+              <textarea
+                id="description"
+                placeholder="Describe the product: what it is, key features, target audience, desired mood…"
+                required
+                maxlength="1000"
+              ></textarea>
+            </div>
+          </div>
+          <button id="submit-btn" type="submit" class="btn-generate">
+            ✦ Generate Image
+          </button>
+        </form>
+      </div>
+
+      <!-- Jobs List -->
+      <div class="jobs-section">
+        <div class="jobs-header">
+          <div class="section-label" style="margin:0;flex:1">Jobs</div>
+          <div class="jobs-count" id="jobs-count"></div>
+          <div class="poll-indicator" style="margin-left:12px">
+            <div class="poll-dot" id="poll-dot"></div>
+            <span id="poll-label"></span>
+          </div>
+        </div>
+        <div id="jobs-list">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+    </div><!-- /.card -->
+  </div><!-- /.wrapper -->
+
+  <!-- Toast notification -->
+  <div id="toast" role="alert" aria-live="assertive"></div>
+
+  <script>
+    /* ─────────────────────────────────────────────────────
+       GlitrAI Mini Content Engine — Frontend JS
+    ───────────────────────────────────────────────────── */
+
+    const API = '';  // same origin
+    let pollTimer = null;
+    let expandedId = null;
+
+    // ── Toast ────────────────────────────────────────────
+    const toast = document.getElementById('toast');
+    let toastTimeout = null;
+
+    function showToast(msg, type = 'success', duration = 4000) {
+      const icon = type === 'success' ? '✓' : '✗';
+      toast.textContent = icon + '  ' + msg;
+      toast.className = 'show ' + type;
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.className = '';
+      }, duration);
+    }
+
+    // ── Form submit ──────────────────────────────────────
+    const form = document.getElementById('gen-form');
+    const submitBtn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const productName = document.getElementById('product-name').value.trim();
+      const description  = document.getElementById('description').value.trim();
+      const refUrl       = document.getElementById('ref-url').value.trim();
+
+      if (!productName || !description) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = '⟳  Submitting…';
+
+      try {
+        const res = await fetch(`${API}/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            product_name: productName,
+            description,
+            reference_image_url: refUrl || null,
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+
+        const { id } = await res.json();
+        showToast(`Job created! ID: ${id.slice(0, 8)}…`, 'success');
+        form.reset();
+        expandedId = id;   // auto-expand this job when it appears
+        await fetchJobs();
+        startPolling();
+
+      } catch (err) {
+        showToast(err.message || 'Failed to create job', 'error', 6000);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '✦ Generate Image';
+      }
+    });
+
+    // ── Status helpers ───────────────────────────────────
+    const STATUS_ICON = {
+      pending:    '○',
+      processing: '◎',
+      completed:  '●',
+      failed:     '✗',
+    };
+
+    const STATUS_LABEL = {
+      pending:    'Pending',
+      processing: 'Processing',
+      completed:  'Done',
+      failed:     'Failed',
+    };
+
+    function badgeHtml(status) {
+      const spinner = status === 'processing'
+        ? '<div class="badge-spinner"></div>'
+        : '';
+      return `<span class="badge ${status}">${spinner}${STATUS_LABEL[status] || status}</span>`;
+    }
+
+    function timeAgo(iso) {
+      if (!iso) return '';
+      const diff = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+      if (diff < 60)   return `${diff}s ago`;
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      return `${Math.floor(diff / 3600)}h ago`;
+    }
+
+    // ── Render job list ──────────────────────────────────
+    function renderJobs(jobs) {
+      const list = document.getElementById('jobs-list');
+      const countEl = document.getElementById('jobs-count');
+
+      countEl.textContent = jobs.length
+        ? `${jobs.length} job${jobs.length !== 1 ? 's' : ''}`
+        : '';
+
+      if (jobs.length === 0) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">✦</div>
+            <p>No jobs yet. Submit a product above to get started.</p>
+          </div>`;
+        return;
+      }
+
+      list.innerHTML = jobs.map(job => {
+        const isExpanded = job.id === expandedId;
+        const shortId    = job.id.slice(0, 8);
+
+        let resultHtml = '';
+        if (isExpanded) {
+          if (job.generated_prompt) {
+            resultHtml += `
+              <div class="job-prompt">
+                <strong>Generated Prompt</strong>
+                ${escHtml(job.generated_prompt)}
+              </div>`;
+          }
+          if (job.status === 'completed' && job.result_image_url) {
+            resultHtml += `
+              <div class="result-image-wrap" id="imgwrap-${shortId}">
+                <img
+                  src="${escHtml(job.result_image_url)}"
+                  alt="Generated image for ${escHtml(job.product_name)}"
+                  loading="lazy"
+                  onload="document.getElementById('overlay-${shortId}')?.remove()"
+                  onerror="this.closest('.result-image-wrap').innerHTML='<div style=\'padding:24px;color:#f87171;font-size:14px\'>Image failed to load. Check the server.</div>'"
+                />
+                <div class="image-loading-overlay" id="overlay-${shortId}">
+                  <div class="big-spinner"></div>
+                  Loading image…
+                </div>
+              </div>`;
+          } else if (job.status === 'failed' && job.error_message) {
+            resultHtml += `
+              <div class="error-box">
+                <strong>Error</strong>
+                ${escHtml(job.error_message)}
+              </div>`;
+          } else if (job.status === 'processing') {
+            resultHtml += `
+              <div class="error-box" style="border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.06);color:#93c5fd">
+                <strong style="color:#60a5fa">In Progress</strong>
+                Generating your product image… this usually takes 20–40 seconds.
+              </div>`;
+          }
+        }
+
+        return `
+          <div class="job-row ${isExpanded ? 'expanded' : ''}" data-id="${job.id}" role="button" tabindex="0">
+            <div class="status-icon ${job.status}">${STATUS_ICON[job.status] || '?'}</div>
+            <div class="job-meta">
+              <div class="job-name">${escHtml(job.product_name)}</div>
+              <div class="job-sub">
+                <span class="job-id">#${shortId}</span>
+                <span class="job-time">${timeAgo(job.created_at)}</span>
+                ${badgeHtml(job.status)}
+              </div>
+              ${resultHtml ? `<div class="job-result">${resultHtml}</div>` : ''}
+            </div>
+          </div>`;
+      }).join('');
+
+      // Click / keyboard handler
+      list.querySelectorAll('.job-row').forEach(row => {
+        const toggle = () => {
+          const id = row.dataset.id;
+          expandedId = expandedId === id ? null : id;
+          renderJobs(jobs);  // re-render to show/hide result
+        };
+        row.addEventListener('click', toggle);
+        row.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') toggle(); });
+      });
+    }
+
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ── Polling ──────────────────────────────────────────
+    let lastJobs = [];
+
+    async function fetchJobs() {
+      try {
+        const res = await fetch(`${API}/jobs`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const jobs = await res.json();
+        lastJobs = jobs;
+        renderJobs(jobs);
+        updatePollUi(jobs);
+        return jobs;
+      } catch (err) {
+        console.error('fetchJobs error:', err);
+        return lastJobs;
+      }
+    }
+
+    function hasPendingJobs(jobs) {
+      return jobs.some(j => j.status === 'pending' || j.status === 'processing');
+    }
+
+    function updatePollUi(jobs) {
+      const dot   = document.getElementById('poll-dot');
+      const label = document.getElementById('poll-label');
+      const active = hasPendingJobs(jobs);
+      dot.className   = 'poll-dot' + (active ? ' active' : '');
+      label.textContent = active ? 'Live polling' : '';
+    }
+
+    function startPolling() {
+      if (pollTimer) return;   // already polling
+      pollTimer = setInterval(async () => {
+        const jobs = await fetchJobs();
+        if (!hasPendingJobs(jobs)) {
+          stopPolling();
+        }
+      }, 3000);
+    }
+
+    function stopPolling() {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      updatePollUi([]);
+    }
+
+    // ── Init ─────────────────────────────────────────────
+    (async () => {
+      const jobs = await fetchJobs();
+      if (hasPendingJobs(jobs)) startPolling();
+    })();
+  </script>
+</body>
+</html>
