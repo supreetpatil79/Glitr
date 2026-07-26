@@ -3,6 +3,7 @@ main.py — GlitrAI Mini Content Engine
 FastAPI application with BackgroundTasks-based async job processing.
 """
 import logging
+import os
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
